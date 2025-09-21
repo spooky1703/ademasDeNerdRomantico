@@ -7,6 +7,32 @@
     <link rel="stylesheet" href="css/main.css" />
     <link rel="icon" href="img/flowers.png" type="image/x-icon" />
     <title>Flower</title>
+
+    <!-- Estilos rápidos para el botón (puedes moverlos a css/main.css) -->
+    <style>
+      #mobile-play-btn {
+        display: none; /* lo mostramos sólo si hace falta */
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        padding: 12px 18px;
+        font-size: 18px;
+        border-radius: 12px;
+        border: none;
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        backdrop-filter: blur(4px);
+      }
+
+      /* variante más sutil en pantallas pequeñas */
+      @media (max-width: 420px) {
+        #mobile-play-btn { font-size: 16px; padding: 10px 14px; }
+      }
+    </style>
   </head>
   <body class="container">
     <audio id="bg-audio"
@@ -14,12 +40,14 @@
        preload="auto"
        playsinline
        webkit-playsinline>
-</audio>
-    <div id="lyrics">
-     
-    </div>
+    </audio>
+
+    <!-- Botón de play que se mostrará sólo si el navegador bloquea autoplay -->
+    <button id="mobile-play-btn" aria-label="Tocar música">▶️ Tocar música</button>
+
+    <div id="lyrics"></div>
     <h1 class="titulo">Cualquier flor del planeta palidece de envidia ante la belleza que tú irradias</h1>
-  
+
     <div class="night"></div>
     <div class="flowers">
       <div class="flower flower--1">
@@ -330,7 +358,69 @@
         </div>
       </div>
     </div>
+
+    <!-- Scripts: anim.js (si aplica), luego script que intenta autoplay y muestra el botón si falla -->
     <script src="anim.js"></script>
+
+    <script>
+      // Script mínimo para intentar autoplay y mostrar botón si falla
+      document.addEventListener('DOMContentLoaded', () => {
+        const audio = document.getElementById('bg-audio');
+        const playBtn = document.getElementById('mobile-play-btn');
+
+        function showPlayBtn() {
+          playBtn.style.display = 'inline-flex';
+        }
+        function hidePlayBtn() {
+          playBtn.style.display = 'none';
+        }
+
+        // Intento inicial de reproducir
+        function tryPlay() {
+          if (!audio) return;
+          // A veces audio.play() devuelve undefined o una promesa
+          const p = audio.play();
+          if (p !== undefined) {
+            p.then(() => {
+              hidePlayBtn();
+            }).catch(() => {
+              // Falla por política de autoplay: mostramos botón
+              showPlayBtn();
+            });
+          } else {
+            // si no retorna promesa, comprobamos si está pausado
+            if (audio.paused) showPlayBtn();
+          }
+        }
+
+        // Al tocar el botón, reproducimos (esto desbloquea audio en iOS/Android)
+        playBtn.addEventListener('click', async () => {
+          try {
+            await audio.play();
+            hidePlayBtn();
+          } catch (e) {
+            // mensaje sencillo si aún falla
+            alert('No fue posible reproducir el audio. Toca cualquier parte de la pantalla para desbloquearlo.');
+          }
+        });
+
+        // Muchos móviles permiten desbloquear audio con el primer toque/gesto:
+        ['touchstart','touchend','click'].forEach(evt => {
+          window.addEventListener(evt, function onceHandler() {
+            // si está pausado intentamos reproducir; si funciona, ocultamos el botón
+            if (audio && audio.paused) {
+              audio.play().then(hidePlayBtn).catch(()=>{});
+            }
+            // removemos el listener (solo una interacción inicial)
+            window.removeEventListener(evt, onceHandler);
+          }, {capture: true});
+        });
+
+        tryPlay();
+      });
+    </script>
+
+    <!-- Tu main.js con el resto de lógica (le seguirá bien) -->
     <script src="main.js"></script>
   </body>
 </html>
